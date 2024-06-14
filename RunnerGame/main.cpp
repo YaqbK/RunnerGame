@@ -242,6 +242,8 @@ private:
         Obstacle* newObstacle = new Obstacle(randomLane * laneWidth + laneMargin, -50.0f); // Start off-screen
         //newObstacle->setLane(randomLane);
         objects.push_back(newObstacle);
+
+        std::cout << "Generated new obstacle in lane: " << randomLane << std::endl; // Debug print
     }
 
 
@@ -302,10 +304,11 @@ private:
         gameState = Playing;
         score = 0;
         objects.clear();
+        currentObstacleIndex = 0;
 
         // Reinitialize the first obstacle
-        Obstacle* obstacle = new Obstacle(150.0f + laneMargin, 0.0f);
-        obstacle->setLane(1);
+        Obstacle* obstacle = new Obstacle((rand() % 3) * laneWidth + laneMargin, -50.0f);
+//        obstacle->setLane(rand() % 3);
         objects.push_back(obstacle);
 
         // Reset player position
@@ -315,7 +318,9 @@ private:
         // Reset the jump timer
         timeSinceLastJump = 0.0f;
         nextJumpTime = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (6.0f - 2.0f)));
+        updateScoreText();  // Reset score text
     }
+
 
 };
 
