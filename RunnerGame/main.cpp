@@ -10,7 +10,6 @@ enum GameState {
     GameOver
 };
 
-// Base class for game objects
 class GameObject : public sf::Drawable {
 public:
     GameObject(float x, float y) {
@@ -54,11 +53,62 @@ protected:
     }
 };
 
-// Player class
-class Player : public GameObject {
+class AnimatedSprite : public sf::Sprite {
 public:
-    Player(float x, float y, float margin) : GameObject(x, y), lane(1), laneWidth(200.0f), laneMargin(170.0f) {
-        shape.setFillColor(sf::Color::Green);
+    AnimatedSprite(int fps, const std::string& path) : fps_(fps) {
+        if (!texture_.loadFromFile(path)) {
+            std::cerr << "Could not load texture: " << path << std::endl;
+        }
+        setTexture(texture_);
+        t_ = 0;
+        fragments_index = 0;
+    }
+
+    void setSpeed(const int& x_speed, const int& y_speed) {
+        x_speed_ = x_speed;
+        y_speed_ = y_speed;
+    }
+
+    void animate(const sf::Time &elapsed) {
+        float dt = elapsed.asSeconds();
+        t_ += dt;
+
+        if (t_ > 1.0 / fps_) {
+            fragments_index++;
+            t_ = 0;
+        }
+
+        if (fragments_index >= fragments.size()) {
+            fragments_index = 0;
+        }
+
+        setTextureRect(fragments[fragments_index]);
+        move(x_speed_ * dt, y_speed_ * dt);
+    }
+
+    void addAnimationFrame(const sf::IntRect& frame) {
+        fragments.emplace_back(frame);
+    }
+
+    sf::FloatRect getBounds() const {
+        return getGlobalBounds();
+    }
+
+private:
+    sf::Texture texture_;
+    int fps_;
+    int x_speed_ = 0;
+    int y_speed_ = 0;
+    float t_ = 0.0;
+    unsigned int fragments_index = 0;
+    std::vector<sf::IntRect> fragments;
+};
+
+class Player : public AnimatedSprite {
+public:
+    Player(float x, float y, float margin, int fps, const std::string& path)
+        : AnimatedSprite(fps, path), lane(1), laneWidth(200.0f), laneMargin(170.0f) {
+        setPosition(x, y);
         updatePosition();
     }
 
@@ -81,8 +131,8 @@ public:
         updatePosition();
     }
 
-    void update(const sf::Time& elapsed) override {
-        // Player-specific updates can be handled here
+    void update(const sf::Time& elapsed) {
+        animate(elapsed); // Use the animate function
     }
 
 private:
@@ -91,11 +141,10 @@ private:
     float laneMargin;
 
     void updatePosition() {
-        shape.setPosition(lane * laneWidth + laneMargin, shape.getPosition().y);
+        setPosition(lane * laneWidth + laneMargin, getPosition().y);
     }
 };
 
-// Obstacle class
 class Obstacle : public GameObject {
 public:
     Obstacle(float x, float y) : GameObject(x, y) {
@@ -122,12 +171,18 @@ private:
     }
 };
 
-// Game class
+
 class Game {
 public:
-    Game() : window(sf::VideoMode(800, 600), "SFML Game"), player(150.0f, 500.0f, laneMargin) {
+    Game() : window(sf::VideoMode(800, 600), "SFML Game"), player(150.0f, 500.0f, laneMargin, 10, "assets/players.png") {
         srand(static_cast<unsigned int>(time(nullptr)));
         objects.push_back(new Obstacle( laneMargin, 300.0f)); // Example object
+
+        int frameWidth = 64; // Adjust based on actual frame size
+        int frameHeight = 64; // Adjust based on actual frame size
+        for (int i = 0; i < 7; ++i) {
+            player.addAnimationFrame(sf::IntRect(i * frameWidth, 0, frameWidth, frameHeight));
+        }
 
         // Initialize the next jump time
         nextJumpTime = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (4.0f - 1.0f)));
@@ -257,6 +312,7 @@ private:
                 return;
             }
             grassTexture.setRepeated(true);
+            player.setTextureRect(sf::IntRect(64,0,64,64));
 
             sf::Sprite sprite;
             sprite.setTexture(grassTexture);
