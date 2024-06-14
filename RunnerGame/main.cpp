@@ -123,6 +123,9 @@ public:
     Game() : window(sf::VideoMode(800, 600), "SFML Game"), player(150.0f, 500.0f, laneMargin) {
         srand(static_cast<unsigned int>(time(nullptr)));
         objects.push_back(new Obstacle( laneMargin, 300.0f)); // Example object
+
+        // Initialize the next jump time
+        nextJumpTime = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (4.0f - 1.0f)));
     }
 
     ~Game() {
@@ -151,6 +154,8 @@ private:
     const float laneMargin = 170.0f;
     float laneWidth = 200.0f;
     int currentObstacleIndex = 0; // Track the index of the current obstacle
+    float timeSinceLastJump = 0.0f;  // Time elapsed since the last jump
+    float nextJumpTime = 0.0f;       // Time interval for the next jump
 
     void processEvents() {
         sf::Event event;
@@ -162,17 +167,26 @@ private:
                     player.moveLeft();
                 } else if (event.key.code == sf::Keyboard::D) {
                     player.moveRight();
-                } else if (event.key.code == sf::Keyboard::Space) {
-                    player.randomMove();
                 }
             }
         }
     }
 
     void update(const sf::Time& elapsed) {
+        float dt = elapsed.asSeconds();
         player.update(elapsed);
         for (auto obj : objects) {
             obj->update(elapsed);
+        }
+
+        // Update the timer for random lane jumps
+        timeSinceLastJump += dt;
+        if (timeSinceLastJump >= nextJumpTime) {
+            player.randomMove();
+            timeSinceLastJump = 0.0f;  // Reset the timer
+
+            // Set the next jump time to a random value between 2 and 6 seconds
+            nextJumpTime = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (3.0f - 1.0f)));
         }
 
         // Check if player has passed the current obstacle
